@@ -36,7 +36,17 @@ def setup_degradation_path(degradation_path=None):
             f"  2. Provide explicit path with --degradation_path argument"
         )
     
-    sys.path.insert(0, str(degradation_path))
+    # Add to Python path - insert at beginning to avoid conflicts
+    if str(degradation_path) not in sys.path:
+        sys.path.insert(0, str(degradation_path))
+    
+    # Also add the src directory explicitly to avoid import conflicts
+    src_path = degradation_path / "src"
+    if src_path.exists() and str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    
+    print(f"Using Hardware-aware-degradation from: {degradation_path}")
+    
     return degradation_path
 
 
@@ -46,8 +56,8 @@ def test_dataset_loading(hr_image_dir, config_path, global_stats_path=None):
     print("TEST 1: Dataset Loading")
     print("="*80)
     
-    # Import after path is setup
-    from src.dataset import DegradationDataset
+    # Import after path is setup - use dataset directly from src in path
+    from dataset import DegradationDataset
     
     # Check global_stats_path
     if global_stats_path and not Path(global_stats_path).exists():

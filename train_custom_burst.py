@@ -54,8 +54,15 @@ def setup_degradation_path(degradation_path=None):
             f"  2. Provide explicit path with --degradation_path argument"
         )
     
-    # Add to Python path
-    sys.path.insert(0, str(degradation_path))
+    # Add to Python path - insert at beginning to avoid conflicts
+    if str(degradation_path) not in sys.path:
+        sys.path.insert(0, str(degradation_path))
+    
+    # Also add the src directory explicitly to avoid import conflicts
+    src_path = degradation_path / "src"
+    if src_path.exists() and str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    
     print(f"Using Hardware-aware-degradation from: {degradation_path}")
     
     return degradation_path
@@ -351,12 +358,22 @@ def main():
     
     # Import dataset modules (must be after path setup)
     try:
-        from src.dataset import DegradationDataset
+        # Import from dataset module (now src is in path)
+        from dataset import DegradationDataset
+        
+        # Import wrapper from Hardware-aware-degradation root
+        sys.path.insert(0, str(degradation_repo_path))
         from burst_dataset_wrapper import BurstDatasetWrapper, collate_fn
+        
         print("✓ Successfully imported dataset modules")
     except ImportError as e:
         print(f"✗ Failed to import dataset modules: {e}")
+        print(f"\nDebug information:")
+        print(f"  sys.path: {sys.path[:3]}")
+        print(f"  degradation_repo_path: {degradation_repo_path}")
         print(f"\nPlease ensure Hardware-aware-degradation repository is set up correctly.")
+        import traceback
+        traceback.print_exc()
         return 1
     
     # Store imports in args for use by other functions
