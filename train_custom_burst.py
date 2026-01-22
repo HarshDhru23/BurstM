@@ -160,6 +160,9 @@ def create_datasets(args):
     Returns:
         train_dataset, val_dataset: Wrapped datasets ready for DataLoader
     """
+    # Get degradation repo path from args
+    degradation_repo_path = args._degradation_repo_path
+    
     # Check global_stats_path with auto-detection
     if args.global_stats_path is None:
         # Try to auto-detect combined_stats.yaml or global_stats.yaml in degradation repo
@@ -388,6 +391,7 @@ def main():
     args._DegradationDataset = DegradationDataset
     args._BurstDatasetWrapper = BurstDatasetWrapper
     args._collate_fn = collate_fn
+    args._degradation_repo_path = degradation_repo_path
     
     print("\nConfiguration:")
     for arg, value in vars(args).items():
