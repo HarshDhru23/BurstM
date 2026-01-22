@@ -35,14 +35,24 @@ class BurstM(pl.LightningModule):
         
         burst = burst[0]  # Extract from list wrapper: [B, num_frames, C, H, W]
         
+        # Debug: print burst shape
+        print(f"DEBUG forward: burst shape after unwrap = {burst.shape}")
+        
         # Handle batch dimension - process each sample in batch
         batch_size = burst.shape[0]
         
         if batch_size == 1:
             # Single sample: [1, num_frames, C, H, W] -> [num_frames, C, H, W]
             burst = burst.squeeze(0)
+            print(f"DEBUG forward: burst shape after squeeze = {burst.shape}")
+            print(f"DEBUG forward: burst[0] shape = {burst[0].shape}")
+            print(f"DEBUG forward: burst[1:] shape = {burst[1:].shape}")
+            
             burst_ref = burst[0].unsqueeze(0).clone()  # [1, C, H, W]
             burst_src = burst[1:]  # [num_frames-1, C, H, W]
+            
+            print(f"DEBUG forward: burst_ref shape = {burst_ref.shape}")
+            print(f"DEBUG forward: burst_src shape = {burst_src.shape}")
             
             burst_feat, ref, EstLrImg = self.burstm_model(burst_ref, burst_src, scale, target_size)
         else:
@@ -53,8 +63,13 @@ class BurstM(pl.LightningModule):
             
             for i in range(batch_size):
                 burst_i = burst[i]  # [num_frames, C, H, W]
+                print(f"DEBUG forward batch {i}: burst_i shape = {burst_i.shape}")
+                
                 burst_ref_i = burst_i[0].unsqueeze(0).clone()  # [1, C, H, W]
                 burst_src_i = burst_i[1:]  # [num_frames-1, C, H, W]
+                
+                print(f"DEBUG forward batch {i}: burst_ref_i shape = {burst_ref_i.shape}")
+                print(f"DEBUG forward batch {i}: burst_src_i shape = {burst_src_i.shape}")
                 
                 burst_feat_i, ref_i, EstLrImg_i = self.burstm_model(burst_ref_i, burst_src_i, scale, target_size)
                 
@@ -71,7 +86,11 @@ class BurstM(pl.LightningModule):
     
     def training_step(self, train_batch, batch_idx):
         x, y, flow_vectors, meta_info, downsample_factor, target_size = train_batch
-        pred, ref, EstLrImg = self.forward(x, downsample_factor.item(), target_size)
+        
+        # Handle downsample_factor - use first element if batched
+        scale = downsample_factor[0].item() if downsample_factor.dim() > 0 else downsample_factor.item()
+        
+        pred, ref, EstLrImg = self.forward(x, scale, target_size)
         pred = pred.clamp(0.0, 1.0)
         loss = self.train_loss(pred, y) + self.train_loss2(EstLrImg, ref)
         self.log('train_loss', loss, on_step=True, on_epoch=True)
@@ -80,7 +99,11 @@ class BurstM(pl.LightningModule):
 
     def validation_step(self, val_batch, batch_idx):
         x, y, flow_vectors, meta_info, downsample_factor, target_size = val_batch
-        pred, ref, EstLrImg = self.forward(x, downsample_factor.item(), target_size)
+        
+        # Handle downsample_factor - use first element if batched
+        scale = downsample_factor[0].item() if downsample_factor.dim() > 0 else downsample_factor.item()
+        
+        pred, ref, EstLrImg = self.forward(x, scale, target_size)
         pred = pred.clamp(0.0, 1.0)
         PSNR = self.valid_psnr(pred, y)
         
