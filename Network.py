@@ -14,14 +14,21 @@ post_process = SimplePostProcess(return_np=True)
 
 
 class BurstM(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, input_channels=4):
         super(BurstM, self).__init__()        
         
         self.train_loss = nn.L1Loss()
         self.train_loss2 = nn.MSELoss()
         self.valid_psnr = PSNR(boundary_ignore=40)
+        self.input_channels = input_channels
 
-        self.burstm_model = models.BurstM.Neural_Warping().cuda()
+        # Initialize model based on input channels
+        if input_channels == 1:
+            # For grayscale: use modified BurstM for single-channel input
+            self.burstm_model = models.BurstM.Neural_Warping_Grayscale().cuda()
+        else:
+            # For RAW: use default 4-channel BurstM
+            self.burstm_model = models.BurstM.Neural_Warping().cuda()
         
     
     def forward(self, burst, scale=4, target_size=(192,192)):
