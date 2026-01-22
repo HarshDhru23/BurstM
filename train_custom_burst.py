@@ -54,7 +54,13 @@ def setup_degradation_path(degradation_path=None):
             f"  2. Provide explicit path with --degradation_path argument"
         )
     
-    # Add to Python path - only add root to preserve package structure
+    # Add to Python path - add src/ FIRST so its utils package is found before BurstM's utils
+    # This is critical because operators.py uses "from utils import bicubic_core"
+    src_path = degradation_path / "src"
+    if src_path.exists() and str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    
+    # Also add root for burst_dataset_wrapper import
     if str(degradation_path) not in sys.path:
         sys.path.insert(0, str(degradation_path))
     
