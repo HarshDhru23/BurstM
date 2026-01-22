@@ -33,11 +33,39 @@ class BurstM(pl.LightningModule):
     
     def forward(self, burst, scale=4, target_size=(192,192)):
         
-        burst = burst[0]
-        burst_ref = burst[0].unsqueeze(0).clone()
-        burst_src = burst[1:]
+        burst = burst[0]  # Extract from list wrapper: [B, num_frames, C, H, W]
         
-        burst_feat, ref, EstLrImg = self.burstm_model(burst_ref, burst_src, scale, target_size)
+        # Handle batch dimension - process each sample in batch
+        batch_size = burst.shape[0]
+        
+        if batch_size == 1:
+            # Single sample: [1, num_frames, C, H, W] -> [num_frames, C, H, W]
+            burst = burst.squeeze(0)
+            burst_ref = burst[0].unsqueeze(0).clone()  # [1, C, H, W]
+            burst_src = burst[1:]  # [num_frames-1, C, H, W]
+            
+            burst_feat, ref, EstLrImg = self.burstm_model(burst_ref, burst_src, scale, target_size)
+        else:
+            # Multiple samples: process individually and stack results
+            burst_feat_list = []
+            ref_list = []
+            EstLrImg_list = []
+            
+            for i in range(batch_size):
+                burst_i = burst[i]  # [num_frames, C, H, W]
+                burst_ref_i = burst_i[0].unsqueeze(0).clone()  # [1, C, H, W]
+                burst_src_i = burst_i[1:]  # [num_frames-1, C, H, W]
+                
+                burst_feat_i, ref_i, EstLrImg_i = self.burstm_model(burst_ref_i, burst_src_i, scale, target_size)
+                
+                burst_feat_list.append(burst_feat_i)
+                ref_list.append(ref_i)
+                EstLrImg_list.append(EstLrImg_i)
+            
+            # Stack results: [B, C, H, W]
+            burst_feat = torch.cat(burst_feat_list, dim=0)
+            ref = torch.cat(ref_list, dim=0)
+            EstLrImg = torch.cat(EstLrImg_list, dim=0)
         
         return burst_feat, ref, EstLrImg
     
