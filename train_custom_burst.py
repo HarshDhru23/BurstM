@@ -64,6 +64,16 @@ def setup_degradation_path(degradation_path=None):
     if str(degradation_path) not in sys.path:
         sys.path.insert(0, str(degradation_path))
     
+    # CRITICAL FIX: Pre-load Hardware-aware-degradation's utils module
+    # This ensures operators.py gets the correct utils, not BurstM's utils
+    import importlib.util
+    utils_init = src_path / "utils" / "__init__.py"
+    if utils_init.exists():
+        spec = importlib.util.spec_from_file_location("utils", utils_init)
+        utils_module = importlib.util.module_from_spec(spec)
+        sys.modules['utils'] = utils_module
+        spec.loader.exec_module(utils_module)
+    
     print(f"Using Hardware-aware-degradation from: {degradation_path}")
     
     return degradation_path
