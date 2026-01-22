@@ -88,7 +88,7 @@ def parse_args():
     parser.add_argument('--config_path', type=str, required=True,
                         help='Path to degradation configuration YAML')
     parser.add_argument('--global_stats_path', type=str, default=None,
-                        help='Path to global percentile statistics YAML (optional - uses simple normalization if not provided)')
+                        help='Path to global/combined percentile statistics YAML (e.g., global_stats.yaml or combined_stats.yaml). Optional - uses simple normalization if not provided.')
     
     # Dataset parameters
     parser.add_argument('--train_split', type=float, default=0.9,
@@ -142,17 +142,45 @@ def create_datasets(args):
     Returns:
         train_dataset, val_dataset: Wrapped datasets ready for DataLoader
     """
-    # Check global_stats_path
+    # Check global_stats_path with auto-detection
+    if args.global_stats_path is None:
+        # Try to auto-detect combined_stats.yaml or global_stats.yaml in degradation repo
+        possible_stats_files = [
+            degradation_repo_path / 'combined_stats.yaml',
+            degradation_repo_path / 'global_stats.yaml',
+        ]
+        for stats_file in possible_stats_files:
+            if stats_file.exists():
+                args.global_stats_path = str(stats_file)
+                print(f"\n✓ Auto-detected statistics file: {stats_file.name}")
+                break
+    
     if args.global_stats_path and not Path(args.global_stats_path).exists():
-        print(f"\n⚠ Warning: global_stats_path specified but file not found: {args.global_stats_path}")
+        print(f"\n⚠ Warning: Statistics file specified but not found: {args.global_stats_path}")
         print(f"  Will use simple normalization (divide by 65535) instead.")
-        print(f"  To generate global stats, run:")
-        print(f"    python compute_global_stats.py --input_dir {args.hr_image_dir} --output global_stats.yaml\n")
+        print(f"  To generate statistics, run:")
+        print(f"    python compute_global_stats.py --input_dir {args.hr_image_dir} --output global_stats.yaml")
+        print(f"  Or combine multiple datasets:")
+        print(f"    python combine_histograms.py --histograms hist1.npz hist2.npz --output combined_stats.yaml\n")
         args.global_stats_path = None
     elif args.global_stats_path is None:
-        print(f"\n⚠ Note: No global_stats_path provided.")
+        print(f"\n⚠ Note: No statistics file found (looked for combined_stats.yaml and global_stats.yaml).")
         print(f"  Using simple normalization (divide by 65535).")
-        print(f"  For better results, consider generating global stats first.\n")
+        print(f"  For better results, generate statistics first.\n")
+    else:
+        # Load and display stats info
+        stats_path = Path(args.global_stats_path)
+        with open(stats_path, 'r') as f:
+            import yaml
+            stats = yaml.safe_load(f)
+        print(f"\n✓ Using statistics file: {stats_path.name}")
+        print(f"  - p2 (2nd percentile): {stats.get('p2', 'N/A'):.2f}")
+        print(f"  - p98 (98th percentile): {stats.get('p98', 'N/A'):.2f}")
+        if 'metadata' in stats and 'num_datasets' in stats['metadata']:
+            print(f"  - Combined from {stats['metadata']['num_datasets']} datasets")
+        if 'suggested_normalization_factor' in stats:
+            print(f"  - Suggested normalization: {stats['suggested_normalization_factor']:.2f}")
+        print()
     
     # Create full degradation dataset
     DegradationDataset = args._DegradationDataset

@@ -275,7 +275,7 @@ def main():
     parser.add_argument('--config_path', type=str, required=True,
                         help='Path to degradation configuration YAML')
     parser.add_argument('--global_stats_path', type=str, default=None,
-                        help='Path to global percentile statistics YAML (optional)')
+                        help='Path to global/combined percentile statistics YAML (e.g., global_stats.yaml or combined_stats.yaml). Optional.')
     parser.add_argument('--batch_size', type=int, default=2,
                         help='Batch size for testing')
     
@@ -290,10 +290,24 @@ def main():
     print(f"\nSetting up paths...")
     try:
         degradation_repo_path = setup_degradation_path(args.degradation_path)
-        print(f"✓ Hardware-aware-degradation found at: {degradation_repo_path}\n")
+        print(f"✓ Hardware-aware-degradation found at: {degradation_repo_path}")
     except FileNotFoundError as e:
         print(f"✗ {e}")
         return 1
+    
+    # Auto-detect stats file if not provided
+    if args.global_stats_path is None:
+        possible_stats = [
+            degradation_repo_path / 'combined_stats.yaml',
+            degradation_repo_path / 'global_stats.yaml',
+        ]
+        for stats_file in possible_stats:
+            if stats_file.exists():
+                args.global_stats_path = str(stats_file)
+                print(f"✓ Auto-detected: {stats_file.name}\n")
+                break
+        else:
+            print(f"ℹ No statistics file found (optional)\n")
     
     print(f"Configuration:")
     print(f"  HR images: {args.hr_image_dir}")
