@@ -149,8 +149,9 @@ class Neural_Warping_Grayscale(nn.Module):
         # Modified encoder for 1-channel grayscale input
         encoder_spec = {'name':'edsr-baseline',
                         'args': {'no_upsampling':True, 'input_channel':1, 'n_resblocks':16, 'n_feats': 128, 'res_scale':1, 'conv': 'default_conv'}}
+        # Blender: 4 LR frames (1 ref + 3 src) × 128 hidden_dim = 512 input channels
         blender_spec = {'name': 'edsr-baseline',
-                        'args': {'no_upsampling':True, 'input_channel':hidden_dim*14, 'n_resblocks':16, 'n_feats': 128, 'n_colors': 512, 'res_scale':1,'conv': 'default_conv'}}
+                        'args': {'no_upsampling':True, 'input_channel':hidden_dim*4, 'n_resblocks':16, 'n_feats': 128, 'n_colors': 512, 'res_scale':1,'conv': 'default_conv'}}
 
         self.encoder = models.make(encoder_spec)
         self.blender = models.make(blender_spec)
