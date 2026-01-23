@@ -163,8 +163,8 @@ class Neural_Warping_Grayscale(nn.Module):
 
         self.stem = nn.Conv2d(1, 1, 1, 1, 0)
 
-        # offset generation
-        self.fnetp = models.Fnet.FNetp()
+        # offset generation - modified for grayscale (2 channels: 1+1 instead of 8: 4+4)
+        self.fnetp = models.Fnet.FNetp(in_dim=2)
         self.imnet = nn.Sequential(
             nn.Conv2d(128, 256, 1, 1, 0),
             nn.ReLU(True),
