@@ -172,11 +172,11 @@ class Neural_Warping_Grayscale(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(256, 256, 1, 1, 0),
             nn.ReLU(True),
-            nn.Conv2d(256, 12, 1, 1, 0),
+            nn.Conv2d(256, 4, 1, 1, 0),  # Output 4 channels (1*4) for grayscale PixelShuffle
         )
         self.lrelu = nn.LeakyReLU(0.1, inplace=True)
         self.skipup1 = nn.Conv2d(1, 128, 3, 1, 1, bias=True)
-        self.skipup2 = nn.Conv2d(128, 3 * 4, 3, 1, 1, bias=True)
+        self.skipup2 = nn.Conv2d(128, 1 * 4, 3, 1, 1, bias=True)  # Output 4 channels (1*4) for grayscale
 
 
     def gen_feat(self, inp):
@@ -222,7 +222,10 @@ class Neural_Warping_Grayscale(nn.Module):
 
     def nw_module(self, tgt, tgt_grid, src, src_grid):
         
-        sc = F.grid_sample(self.up(tgt), tgt_grid, mode='bilinear', align_corners=False)
+        # For grayscale (1 channel), use bilinear upsampling instead of PixelShuffle
+        # PixelShuffle requires ≥4 channels, but tgt only has 1 channel
+        tgt_up = F.interpolate(tgt, scale_factor=2, mode='bilinear', align_corners=False)
+        sc = F.grid_sample(tgt_up, tgt_grid, mode='bilinear', align_corners=False)
         sc = self.skipup2(self.lrelu(self.skipup1(sc)))
 
         burst_inp = torch.cat([tgt, src], dim=0)
